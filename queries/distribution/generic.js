@@ -1,0 +1,34 @@
+import { sparqlEscapeUri } from 'mu';
+import { updateSudo } from '@lblod/mu-auth-sudo';
+
+export const copyObject = async function (uri, properties, sourceGraph, targetGraphs, filter) {
+  const escapedUri = sparqlEscapeUri(uri);
+
+  const queryString = `
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  
+  INSERT {
+      GRAPH ?targetGraphs {
+          ${escapedUri} a ?class ;
+              mu:uuid ?uuid ;
+              ?p ?o .
+      }
+  }
+  WHERE {
+      GRAPH ${sparqlEscapeUri(sourceGraph)} {
+          ${escapedUri} a ?class ;
+              mu:uuid ?uuid .
+          OPTIONAL { ${escapedUri} ?p ?o . }
+          VALUES ?p {
+              ${properties.map(sparqlEscapeUri).join('\n')}
+          }
+          ${filter || ''}
+      }
+      VALUES ?targetGraphs {
+          ${targetGraphs.map(sparqlEscapeUri).join(' ')}
+      }
+  }
+  `;
+  await updateSudo(queryString);
+};
+
