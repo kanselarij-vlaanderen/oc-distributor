@@ -1,5 +1,5 @@
 import { app, uuid, errorHandler } from 'mu';
-import { authorizedSession } from './queries/session';
+import { authorizedSession } from './lib/session';
 import { getMeetingById } from './queries/oc';
 import { authorizedUserGroups } from './config/config';
 import { createJob, getJobByMeeting, FINISHED } from './queries/jobs';
