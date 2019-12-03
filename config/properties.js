@@ -13,10 +13,10 @@ export const agendaItem = [
   expand`oc:priority`,
   expand`oc:subPriority`,
   expand`dct:subject`,
-  // expand`oc:notification`,
-  expand`oc:submitter`
-  // expand`oc:documents`,
-  // expand`oc:notificationRelatedDocuments`,
+  expand`oc:notification`,
+  expand`oc:submitter`,
+  expand`oc:documents`,
+  expand`oc:notificationRelatedDocuments`
 ];
 
 export const _case = [
