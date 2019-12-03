@@ -63,12 +63,25 @@ const runAgendaDistribution = async function (meetingUri) {
     );
   }
   console.log(`Copying ${meeting.agendaItems.length} agenda items for meeting ${meeting.uuid} ...`);
-  const copyItems = meeting.agendaItems.map((agendaItemUri) => {
-    console.log(`Copying item ${agendaItemUri}`);
-    return copyObject(agendaItemUri,
+  const copyItems = meeting.agendaItems.map(async agendaItemUri => {
+    console.log(`Copying agendaItem and related documents for ${agendaItemUri} ...`);
+    const agendaItem = await getAgendaItem(agendaItemUri, source);
+    await copyObject(agendaItemUri,
       agendaItemProperties,
       source,
       targets);
+    if (agendaItem.documents.length) {
+      await copyDocuments(agendaItem.documents,
+        source,
+        [graphs['kabinet']],
+        accessLevels['kabinet']
+      );
+      await copyDocuments(agendaItem.documents,
+        source,
+        [graphs['adviesverlener']],
+        accessLevels['adviesverlener']
+      );
+    }
   });
   return Promise.all(copyItems);
 };
