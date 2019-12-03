@@ -11,7 +11,7 @@ const FAILED = 'failed';
 async function createJob (uuid, meeting, entity) {
   const job = {
     uri: distributorGraph + `distribution-jobs/${uuid}`,
-    uuid,
+    id: uuid,
     meeting,
     entity,
     status: SCHEDULED,
@@ -25,7 +25,7 @@ async function createJob (uuid, meeting, entity) {
   INSERT DATA {
       GRAPH ${sparqlEscapeUri(distributorGraph)} {
           ${sparqlEscapeUri(job.uri)} a ext:DistributionJob ;
-              mu:uuid ${sparqlEscapeString(job.uuid)} ;
+              mu:uuid ${sparqlEscapeString(job.id)} ;
   
               ext:meeting ${sparqlEscapeUri(job.meeting)} ;
               ext:entity ${sparqlEscapeString(job.entity)} ;
@@ -109,7 +109,7 @@ async function getJobByMeeting (meeting, entity) {
   PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dct: <http://purl.org/dc/terms/>
-  SELECT ?job ?uuid ?modified ?status
+  SELECT ?job (?uuid AS ?id) ?modified ?status
   FROM ${sparqlEscapeUri(distributorGraph)}
   WHERE {
       ?job ext:meeting ${sparqlEscapeUri(meeting)} .
