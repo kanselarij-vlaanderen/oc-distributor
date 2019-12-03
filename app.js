@@ -14,36 +14,44 @@ app.all('/meetings/:uuid/:entity/*', async function (req, res, next) {
   const meeting = await getMeetingById(meetingId);
   if (meeting) {
     req.meeting = meeting;
+    next();
   } else {
     res.status(404).send({ error: `Could not find meeting with uuid ${meetingId}` });
   }
+}, async function (req, res, next) {
   const entity = req.params.entity;
   if (['agenda', 'notifications'].includes(entity)) {
     req.entity = entity;
+    next();
   } else {
     res.status(400).send({ error: `Distributor doesn't support entity of type ${entity}` });
   }
-  next();
 });
 
 app.post('/meetings/:uuid/:entity/distribute', async function (req, res, next) {
-  const authorized = await authorizedSession(req.get('MU-SESSION-ID'), authorizedUserGroups);
-  console.log('auhtorized?', authorized);
-  // if (!authorized) {
-  //   res.status(403).send({ error: `You don't have the authorization to distribute ${req.entity}` });
-  // }
+  const authorized = authorizedSession(JSON.parse(req.get('MU-AUTH-ALLOWED-GROUPS')), authorizedUserGroups);
+  if (authorized) {
+    next();
+  } else {
+    res.status(403).send({ error: `You don't have the authorization to distribute ${req.entity}` });
+  }
+}, async function (req, res, next) {
   const jobId = uuid();
   const job = await createJob(jobId, req.meeting.uri, req.entity);
   runJob(job.uri);
-  res.status(202).send({ jobId });
+  res.status(202).send({ data: job });
 });
 
 app.get('/meetings/:uuid/:entity/distribute', async function (req, res, next) {
   const job = await getJobByMeeting(req.meeting.uri, req.entity);
-  if (job.status === FINISHED) {
-    res.status(200).send({ status: job.status });
+  if (job) {
+    if (job.status === FINISHED) {
+      res.status(200).send({ data: job });
+    } else {
+      res.status(406).send({ data: job });
+    }
   } else {
-    res.status(406).send({ status: job.status });
+    res.status(404).end();
   }
 });
 
