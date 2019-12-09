@@ -4,7 +4,7 @@ import { copyDocuments } from './queries/distribution/documents';
 import { meeting as meetingProperties, agendaItem as agendaItemProperties } from './config/properties';
 import * as accessLevels from './config/access-levels';
 import { graphs, source, targets } from './config/graphs';
-import { getScheduledJob, updateJob, FINISHED, STARTED, FAILED } from './queries/jobs';
+import { getScheduledJob, updateJob, getFirstScheduledJob, FINISHED, STARTED, FAILED } from './queries/jobs';
 import { expand } from './config/prefixes';
 
 const runJob = async function (jobUri) {
@@ -34,6 +34,20 @@ const runJob = async function (jobUri) {
     }
   } else {
     await updateJob(jobUri, FAILED);
+  }
+};
+
+const runscheduledJobs = async function () {
+  console.log('Running all still scheduled jobs on startup');
+  let job = await getFirstScheduledJob();
+  while (job) {
+    console.log('Running job', job.uri);
+    try {
+      await runJob(job.uri);
+    } catch (e) {
+      console.log('Something went wrong while running job', job.uri);
+    }
+    job = await getFirstScheduledJob();
   }
 };
 
@@ -122,3 +136,4 @@ const runNotificationDistribution = async function (meetingUri) {
 };
 
 export { runJob };
+export { runJob, runscheduledJobs };

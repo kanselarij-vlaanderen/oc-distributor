@@ -1,9 +1,39 @@
 import { app, uuid, errorHandler } from 'mu';
 import { authorizedSession } from './lib/session';
-import { getMeetingById } from './queries/oc';
+import { getMeetingById, getPastMeetings } from './queries/oc';
 import { authorizedUserGroups } from './config/config';
+import * as graphs from './config/graphs';
 import { createJob, getJobByMeeting, FINISHED } from './queries/jobs';
-import { runJob } from './distribution';
+import { clearGraph } from './queries/distribution/generic';
+import { runJob, runscheduledJobs } from './distribution';
+
+if (process.env.REDISTRIBUTE_PAST_ON_STARTUP === 'true') {
+  console.log(`
+################################################################################
+# Redistributing all past meetings #############################################
+################################################################################
+  `);
+  const clearings = graphs.targets.map(async (g) => {
+    console.log(`clearing graph <${g}> ...`);
+    return clearGraph(g);
+  });
+  Promise.all(clearings).then(() => {
+    console.log('cleared all target graphs');
+    return getPastMeetings();
+  }).then(async (pastMeetings) => {
+    const jobCreations = pastMeetings.map(async (meeting) => {
+      console.log(`Creating distribution jobs for meeting of ${meeting.startedAt} (<${meeting.uri}>)`);
+      await createJob(uuid(), meeting.uri, 'agenda');
+      await createJob(uuid(), meeting.uri, 'notifications');
+    });
+    return Promise.all(jobCreations);
+  }).then(async () => {
+    console.log('Created distribution jobs for all past meetings. Running jobs now.');
+    return runscheduledJobs();
+  }).then(() => {
+    console.log('Ran distribution jobs for all past meetings.');
+  });
+}
 
 app.get('/', function (req, res) {
   res.send('Hello from oc-distributor');

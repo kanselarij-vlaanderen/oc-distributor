@@ -41,16 +41,18 @@ async function createJob (uuid, meeting, entity) {
 
 async function getFirstScheduledJob () {
   const queryString = `
-  PREFIX    mu: <http://mu.semte.ch/vocabularies/core/>
-  PREFIX    ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dct: <http://purl.org/dc/terms/>
   SELECT ?uri ?id ?created
   FROM ${sparqlEscapeUri(distributorGraph)}
   WHERE {
       ?uri a ext:DistributionJob ;
+          mu:uuid ?id ;
           dct:created ?created ;
           ext:status ${sparqlEscapeString(SCHEDULED)} ;
-          mu:uuid ?id .
+          ext:meeting ?meeting ;
+          ext:entity ?entity .
   } ORDER BY ASC(?created) LIMIT 1`;
   const jobs = parseResult(await querySudo(queryString));
   return jobs.length ? jobs[0] : null;

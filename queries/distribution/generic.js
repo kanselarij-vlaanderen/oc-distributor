@@ -32,3 +32,20 @@ export const copyObject = async function (uri, properties, sourceGraph, targetGr
   await updateSudo(queryString);
 };
 
+export const clearGraph = function (uri) {
+  const escapedGraph = sparqlEscapeUri(uri);
+  const queryString = `
+  DELETE {
+    GRAPH ${escapedGraph} {
+      ?s ?p ?o .
+    }
+  }
+  WHERE {
+    GRAPH ${escapedGraph} {
+      ?s ?p ?o .
+    }
+  }
+  `;
+  return updateSudo(queryString);
+};
+

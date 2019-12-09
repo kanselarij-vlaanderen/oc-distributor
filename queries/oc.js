@@ -2,6 +2,24 @@ import { query, update, sparqlEscapeString, sparqlEscapeUri, sparqlEscapeDateTim
 import { parseResult } from './helpers';
 import { querySudo, updateSudo } from '@lblod/mu-auth-sudo';
 
+async function getPastMeetings () {
+  const queryString = `
+    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+    PREFIX oc: <http://mu.semte.ch/vocabularies/ext/oc/>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+    SELECT ?uri ?uuid ?startedAt
+    WHERE {
+        ?uri a oc:Meeting ;
+            mu:uuid ?uuid ;
+            prov:startedAtTime ?startedAt .
+        FILTER ( ?startedAt < NOW () )
+    }
+    ORDER BY DESC(?startedAt)
+`;
+  const meetings = parseResult(await querySudo(queryString));
+  return meetings;
+}
+
 async function getMeetingById (uuid) {
   const queryString = `
     PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -69,4 +87,4 @@ async function getAgendaItem (uri, graph) {
   }
 }
 
-export { getMeetingById, getMeeting, getAgendaItem };
+export { getPastMeetings, getMeetingById, getMeeting, getAgendaItem };
