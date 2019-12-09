@@ -116,9 +116,13 @@ async function getJobByMeeting (meeting, entity) {
       ?job a ext:DistributionJob ;
           mu:uuid ?uuid ;
           ext:entity ${sparqlEscapeString(entity)} ;
+          dct:created ?created ;
           dct:modified ?modified ;
           ext:status ?status .
-  }`;
+  }
+  ORDER BY DESC (?created)
+  LIMIT 1
+  `;
   const jobs = parseResult(await querySudo(queryString));
   return jobs.length ? jobs[0] : null;
 }
