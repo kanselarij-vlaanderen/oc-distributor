@@ -39,26 +39,21 @@ async function createJob (uuid, meeting, entity) {
   return job;
 }
 
-async function getFirstScheduledJobId () {
+async function getFirstScheduledJob () {
   const queryString = `
   PREFIX    mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX    ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dct: <http://purl.org/dc/terms/>
-  SELECT ?id
+  SELECT ?uri ?id ?created
   FROM ${sparqlEscapeUri(distributorGraph)}
   WHERE {
-      ?job a ext:DistributionJob ;
+      ?uri a ext:DistributionJob ;
           dct:created ?created ;
           ext:status ${sparqlEscapeString(SCHEDULED)} ;
           mu:uuid ?id .
   } ORDER BY ASC(?created) LIMIT 1`;
-  const result = await querySudo(queryString);
-  const bindings = result.results.bindings;
-  if (bindings.length === 1) {
-    return bindings[0].id.value;
-  } else {
-    return null;
-  }
+  const jobs = parseResult(await querySudo(queryString));
+  return jobs.length ? jobs[0] : null;
 }
 
 async function updateJob (uri, status) {
@@ -127,4 +122,4 @@ async function getJobByMeeting (meeting, entity) {
   return jobs.length ? jobs[0] : null;
 }
 
-export { createJob, updateJob, getFirstScheduledJobId, getScheduledJob, getJobByMeeting, FINISHED, FAILED, STARTED };
+export { createJob, updateJob, getFirstScheduledJob, getScheduledJob, getJobByMeeting, FINISHED, FAILED, STARTED };
