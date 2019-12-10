@@ -16,8 +16,7 @@ async function getPastMeetings () {
     }
     ORDER BY DESC(?startedAt)
 `;
-  const meetings = parseResult(await querySudo(queryString));
-  return meetings;
+  return parseResult(await querySudo(queryString));
 }
 
 async function getMeetingById (uuid) {

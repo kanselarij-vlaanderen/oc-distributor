@@ -148,6 +148,27 @@ async function getCompletedJobsByMeeting (meeting, entity) {
   return parseResult(await querySudo(queryString));
 }
 
+function deleteJobsByMeeting (meeting) {
+  const queryString = `
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX dct: <http://purl.org/dc/terms/>
+  DELETE {
+      GRAPH ${sparqlEscapeUri(distributorGraph)} {
+          ?job ?p ?o .
+      }
+  }
+  WHERE {
+      GRAPH ${sparqlEscapeUri(distributorGraph)} {
+          ?job a ext:DistributionJob ;
+              ext:meeting ${sparqlEscapeUri(meeting)} ;
+              ?p ?o .
+      }
+  }
+  `;
+  return updateSudo(queryString);
+}
+
 export {
   createJob,
   updateJob,
@@ -155,5 +176,6 @@ export {
   getScheduledJob,
   getJobByMeeting,
   getCompletedJobsByMeeting,
+  deleteJobsByMeeting,
   FINISHED, FAILED, STARTED
 };
