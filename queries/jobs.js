@@ -95,7 +95,7 @@ async function getScheduledJob (jobUri) {
           ext:meeting ?meeting ;
           ext:entity ?entity ;
           dct:modified ?modified ;
-          ext:status ${sparqlEscapeString(SCHEDULED)}  .
+          ext:status ${sparqlEscapeString(SCHEDULED)} .
   }`;
   const jobs = parseResult(await querySudo(queryString));
   return jobs.length ? jobs[0] : null;
@@ -124,4 +124,36 @@ async function getJobByMeeting (meeting, entity) {
   return jobs.length ? jobs[0] : null;
 }
 
-export { createJob, updateJob, getFirstScheduledJob, getScheduledJob, getJobByMeeting, FINISHED, FAILED, STARTED };
+async function getCompletedJobsByMeeting (meeting, entity) {
+  const queryString = `
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX dct: <http://purl.org/dc/terms/>
+  SELECT ?job (?uuid AS ?id) ?created ?status
+  FROM ${sparqlEscapeUri(distributorGraph)}
+  WHERE {
+      ?job ext:meeting ${sparqlEscapeUri(meeting)} .
+      ?job a ext:DistributionJob ;
+          mu:uuid ?uuid ;
+          ext:entity ${sparqlEscapeString(entity)} ;
+          dct:created ?created ;
+          ext:status ?status .
+      VALUES ?status {
+        ${sparqlEscapeString(FINISHED)}
+        ${sparqlEscapeString(FAILED)}
+      }
+  }
+  ORDER BY DESC (?created)
+  `;
+  return parseResult(await querySudo(queryString));
+}
+
+export {
+  createJob,
+  updateJob,
+  getFirstScheduledJob,
+  getScheduledJob,
+  getJobByMeeting,
+  getCompletedJobsByMeeting,
+  FINISHED, FAILED, STARTED
+};

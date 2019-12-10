@@ -1,10 +1,10 @@
 import { getMeeting, getAgendaItem } from './queries/oc';
-import { copyObject } from './queries/distribution/generic';
-import { copyDocuments } from './queries/distribution/documents';
+import { copyObject, deleteObject } from './queries/distribution/generic';
+import { copyDocuments, deleteDocuments } from './queries/distribution/documents';
 import { meeting as meetingProperties, agendaItem as agendaItemProperties } from './config/properties';
 import * as accessLevels from './config/access-levels';
 import { graphs, source, targets } from './config/graphs';
-import { getScheduledJob, updateJob, getFirstScheduledJob, FINISHED, STARTED, FAILED } from './queries/jobs';
+import { getScheduledJob, updateJob, getFirstScheduledJob, getCompletedJobsByMeeting, FINISHED, STARTED, FAILED } from './queries/jobs';
 import { expand } from './config/prefixes';
 
 const runJob = async function (jobUri) {
@@ -13,6 +13,11 @@ const runJob = async function (jobUri) {
     await updateJob(jobUri, STARTED);
   }
   if (job.entity === 'agenda') {
+    const hasPreviousDistribution = (await getCompletedJobsByMeeting(job.meeting, job.entity)).length > 0;
+    if (hasPreviousDistribution) {
+      console.log(`Previously ditributed ${job.entity} for meeting ${job.meeting}. Retracting before redistributing`);
+      await runAgendaRetraction(job.meeting);
+    }
     console.log(`Distributing agenda for meeting ${job.meeting} (job ${job.uuid})`);
     try {
       await runAgendaDistribution(job.meeting);
@@ -23,6 +28,11 @@ const runJob = async function (jobUri) {
       await updateJob(jobUri, FAILED);
     }
   } else if (job.entity === 'notifications') {
+    const hasPreviousDistribution = (await getCompletedJobsByMeeting(job.meeting, job.entity)).length > 0;
+    if (hasPreviousDistribution) {
+      console.log(`Previously ditributed ${job.entity} for meeting ${job.meeting}. Retracting before redistributing`);
+      await runNotificationsRetraction(job.meeting);
+    }
     try {
       console.log(`Distributing notifications for meeting ${job.meeting} (job ${job.uuid})`);
       await runNotificationDistribution(job.meeting);
@@ -58,7 +68,7 @@ const runAgendaDistribution = async function (meetingUri) {
     meetingProperties,
     source,
     targets);
-  if (meeting.documents) {
+  if (meeting.documents.length) {
     console.log(`Copying ${meeting.documents.length} meeting documents ...`);
     await copyDocuments(meeting.documents,
       source,
@@ -100,6 +110,33 @@ const runAgendaDistribution = async function (meetingUri) {
   return Promise.all(copyItems);
 };
 
+const runAgendaRetraction = async function (meetingUri) {
+  console.log(`Retracting agenda for meeting ${meetingUri} ...`);
+  const retractTargets = targets.map(async (graph) => {
+    console.log(`Retracting agenda for group ${graph} ...`);
+    const meeting = await getMeeting(meetingUri, graph);
+    if (meeting.documents.length) {
+      console.log(`Retracting ${meeting.documents.length} meeting documents ...`);
+      await deleteDocuments(meeting.documents,
+        [graph]);
+    }
+    const retractItems = meeting.agendaItems.map(async agendaItemUri => {
+      console.log(`Retracting documents for item ${agendaItemUri} ...`);
+      const agendaItem = await getAgendaItem(agendaItemUri, graph);
+      const allDocuments = agendaItem.notification ? [agendaItem.notification, ...agendaItem.documents] : agendaItem.documents;
+      if (allDocuments.length) {
+        await deleteDocuments(allDocuments, [graph]);
+      }
+      console.log(`Retracting item ${agendaItemUri} itself ...`);
+      await deleteObject(agendaItemUri, [graph]);
+    });
+    await Promise.all(retractItems);
+    console.log(`Retracting meeting ${meetingUri} itself ...`);
+    return deleteObject(meetingUri, [graph]);
+  });
+  return Promise.all(retractTargets);
+};
+
 const runNotificationDistribution = async function (meetingUri) {
   const meeting = await getMeeting(meetingUri, source);
   const copyItems = meeting.agendaItems.map(async agendaItemUri => {
@@ -115,12 +152,12 @@ const runNotificationDistribution = async function (meetingUri) {
         ],
         source,
         targets);
-      await copyDocuments(allDocuments,
+      await copyDocuments([agendaItem.notification],
         source,
         [graphs['kabinet']],
         accessLevels['kabinet']
       );
-      await copyDocuments(allDocuments,
+      await copyDocuments([agendaItem.notification],
         source,
         [graphs['adviesverlener']],
         accessLevels['adviesverlener']
@@ -135,5 +172,28 @@ const runNotificationDistribution = async function (meetingUri) {
   return Promise.all(copyItems);
 };
 
-export { runJob };
+const runNotificationsRetraction = async function (meetingUri) {
+  console.log(`Retracting notifications for meeting ${meetingUri} ...`);
+  const retractTargets = targets.map(async (graph) => {
+    console.log(`Retracting notifications for group ${graph} ...`);
+    const meeting = await getMeeting(meetingUri, graph);
+    if (meeting) {
+      const retractItems = meeting.agendaItems.map(async agendaItemUri => {
+        console.log(`Retracting notifications for item ${agendaItemUri} ...`);
+        const agendaItem = await getAgendaItem(agendaItemUri, graph);
+        const allDocuments = agendaItem.notification ? [agendaItem.notification, ...agendaItem.documents] : agendaItem.documents;
+        if (graph === graphs['parlement'] && allDocuments.length) {
+          await deleteDocuments(allDocuments, [graph]);
+        } else if (agendaItem.notification) {
+          await deleteDocuments([agendaItem.notification], [graph]);
+        }
+      });
+      return Promise.all(retractItems);
+    } else {
+      console.log(`No meeting ${meetingUri} in graph ${graph}`);
+    }
+  });
+  return Promise.all(retractTargets);
+};
+
 export { runJob, runscheduledJobs };
