@@ -34,18 +34,17 @@ async function getMeetingById (uuid) {
 }
 
 async function getMeeting (uri, graph) {
+  const escapedUri = sparqlEscapeUri(uri);
   const queryString = `
     PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
     PREFIX oc: <http://mu.semte.ch/vocabularies/ext/oc/>
     SELECT ?uuid ?agendaItems ?documents
     FROM ${sparqlEscapeUri(graph)}
     WHERE {
-        ${sparqlEscapeUri(uri)} a oc:Meeting ;
-            mu:uuid ?uuid ;
-            oc:agendaItem ?agendaItems .
-        OPTIONAL {
-          ${sparqlEscapeUri(uri)} oc:documents ?documents .
-        }
+        ${escapedUri} a oc:Meeting ;
+            mu:uuid ?uuid .
+        OPTIONAL { ${escapedUri} oc:agendaItem ?agendaItems . }
+        OPTIONAL { ${escapedUri} oc:documents ?documents . }
     }
 `;
   const meetings = parseResult(await querySudo(queryString));
