@@ -31,7 +31,7 @@ export const copyDocuments = async function (documentUris, sourceGraph, targetGr
               ext:vertrouwelijk "false"^^mulit:boolean ;
               ext:toegangsniveauVoorDocumentVersie ?al ;
               ?vp ?vo .
-          VALUES ?al { ${allowedAccessLevels.map(sparqlEscapeUri).join(' ')} }
+          VALUES ?al { ${allowedAccessLevels.map(sparqlEscapeUri).join('\n              ')} }
           ?ver ext:file ?file .
           ?file a nfo:FileDataObject ;
               ?fp ?fo .
