@@ -49,10 +49,10 @@ export const clearGraph = function (uri) {
   return updateSudo(queryString);
 };
 
-export const deleteObject = function (uri, graphs) {
+export const deleteObject = async function (uri, graphs) {
   const escapedUri = sparqlEscapeUri(uri);
   const escapedGraphs = graphs.map(sparqlEscapeUri).join(' ');
-  return `
+  const queryString = `
   DELETE {
     GRAPH ${escapedGraphs} {
       ${escapedUri} ?p ?o .
@@ -64,4 +64,5 @@ export const deleteObject = function (uri, graphs) {
     }
   }
   `;
+  await updateSudo(queryString);
 };
