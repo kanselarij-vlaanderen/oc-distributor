@@ -1,9 +1,13 @@
+import bodyParser from 'body-parser';
 import { app, uuid, errorHandler } from 'mu';
 import { authorizedSession } from './lib/session';
 import { getMeetingById } from './queries/oc';
 import { authorizedUserGroups } from './config/config';
+import { expand } from './config/prefixes';
 import { createJob, getJobByMeeting, FINISHED } from './queries/jobs';
+import * as deltaUtil from './lib/delta-util';
 import { runJob, redistributePastMeetings } from './lib/distribution';
+import { runAgendaRetraction } from './lib/distribution/agenda';
 
 if (process.env.REDISTRIBUTE_PAST_ON_STARTUP === 'true') {
   redistributePastMeetings();
@@ -56,6 +60,27 @@ app.get('/meetings/:uuid/:entity/distribute', async function (req, res, next) {
     }
   } else {
     res.status(404).end();
+  }
+});
+
+app.post('/delta', bodyParser.json(), async (req, res) => {
+  res.status(202).end();
+  const insertionDeltas = deltaUtil.insertionDeltas(req.body);
+  const deletionDeltas = deltaUtil.deletionDeltas(req.body);
+  if (insertionDeltas.length || deletionDeltas.length) {
+    console.debug(`Received deltas (${insertionDeltas.length + deletionDeltas.length} total)`);
+  } else {
+    return; // Empty delta message received on startup?
+  }
+
+  const typeDeletionDeltas = deltaUtil.filterByType(deletionDeltas, [expand`oc:Meeting`]);
+  if (typeDeletionDeltas.length) {
+    console.log(`Received deltas for ${typeDeletionDeltas.length} DELETED Meeting object(s)`);
+  }
+  const meetingUris = deltaUtil.uniqueSubjects(typeDeletionDeltas);
+  for (const meetingUri of meetingUris) {
+    console.log(`Running cascading retraction for meeting <${meetingUri}>`);
+    await runAgendaRetraction(meetingUri);
   }
 });
 
