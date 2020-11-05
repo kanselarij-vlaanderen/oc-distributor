@@ -20,12 +20,12 @@ export const copyObject = async function (uri, properties, sourceGraph, targetGr
               mu:uuid ?uuid .
           OPTIONAL { ${escapedUri} ?p ?o . }
           VALUES ?p {
-              ${properties.map(sparqlEscapeUri).join('\n')}
+              ${properties.map(sparqlEscapeUri).join('\n              ')}
           }
           ${filter || ''}
       }
       VALUES ?targetGraphs {
-          ${targetGraphs.map(sparqlEscapeUri).join(' ')}
+          ${targetGraphs.map(sparqlEscapeUri).join('\n          ')}
       }
   }
   `;
