@@ -24,7 +24,9 @@ app.all('/meetings/:uuid/:entity/*', async function (req, res, next) {
     req.meeting = meeting;
     next();
   } else {
-    res.status(404).send({ error: `Could not find meeting with uuid ${meetingId}` });
+    const err = new Error(`Could not find meeting with uuid ${meetingId}`);
+    err.status = 404;
+    next(err);
   }
 }, async function (req, res, next) {
   const entity = req.params.entity;
@@ -32,7 +34,9 @@ app.all('/meetings/:uuid/:entity/*', async function (req, res, next) {
     req.entity = entity;
     next();
   } else {
-    res.status(400).send({ error: `Distributor doesn't support entity of type ${entity}` });
+    const err = new Error(`Distributor doesn't support entity of type ${entity}`);
+    err.status = 400;
+    next(err);
   }
 });
 
@@ -41,7 +45,9 @@ app.post('/meetings/:uuid/:entity/distribute', async function (req, res, next) {
   if (authorized) {
     next();
   } else {
-    res.status(403).send({ error: `You don't have the authorization to distribute ${req.entity}` });
+    const err = new Error(`You don't have the authorization to distribute ${req.entity}`);
+    err.status = 403;
+    next(err);
   }
 }, async function (req, res, next) {
   const jobId = uuid();
